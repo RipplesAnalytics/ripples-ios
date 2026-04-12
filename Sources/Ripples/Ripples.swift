@@ -28,7 +28,7 @@ public final class Ripples {
     private init() {}
 
     /// Initialize the SDK. Safe to call multiple times — subsequent calls
-    /// after the first are ignored (matches PostHog's `setup` semantics).
+    /// after the first are ignored.
     @discardableResult
     public static func setup(_ config: RipplesConfig) -> Ripples {
         shared.configure(config)
@@ -38,7 +38,7 @@ public final class Ripples {
     private func configure(_ config: RipplesConfig) {
         setupLock.withLock {
             guard self.config == nil else {
-                ripplesLog("Ripples already initialized; ignoring setup()")
+                ripplesDebug("Ripples already initialized; ignoring setup()")
                 return
             }
             self.config = config
@@ -56,7 +56,7 @@ public final class Ripples {
         }
     }
 
-    // MARK: - Public API (mirrors ripples-php)
+    // MARK: - Public API
 
     /// Set or update traits on a user. Extra keys become custom properties.
     public func identify(_ userId: String, traits: [String: Any] = [:]) {
@@ -111,7 +111,7 @@ public final class Ripples {
                          with extras: [String: Any])
     {
         guard let queue = self.queue else {
-            ripplesLog("Ripples not initialized; dropping '\(type)' call")
+            ripplesLog("SDK not initialized — call Ripples.setup() before sending events. Dropping '\(type)' call.")
             return
         }
         var props = base
@@ -123,7 +123,7 @@ public final class Ripples {
         #if canImport(UIKit) && !os(watchOS)
         let center = NotificationCenter.default
         // Flush when the app is backgrounded / terminated so we don't lose
-        // events sitting in the queue, mirroring PostHog's behavior.
+        // events sitting in the queue.
         let backgroundToken = center.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil, queue: nil

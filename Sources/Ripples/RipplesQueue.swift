@@ -2,7 +2,7 @@ import Foundation
 
 /// The brain of the offline pipeline.
 ///
-/// Responsibilities, modelled on `PostHogQueue`:
+/// Responsibilities:
 ///   * Persist events via `RipplesFileBackedQueue`.
 ///   * Flush periodically on a timer, immediately when `flushAt` is reached,
 ///     and again the moment reachability flips back online.
@@ -44,10 +44,10 @@ final class RipplesQueue {
         reachability?.onChange = { [weak self] online in
             guard let self else { return }
             if online {
-                ripplesLog("Network back online, flushing")
+                ripplesDebug("Network back online, flushing")
                 self.flush()
             } else {
-                ripplesLog("Network offline, queue paused")
+                ripplesDebug("Network offline, queue paused")
             }
         }
         reachability?.start()
@@ -81,7 +81,7 @@ final class RipplesQueue {
         }
 
         fileQueue.add(data)
-        ripplesLog("Queued '\(event.type)'. Depth=\(fileQueue.depth)")
+        ripplesDebug("Queued '\(event.type)'. Depth=\(fileQueue.depth)")
 
         if fileQueue.depth >= config.flushAt {
             flush()
@@ -136,7 +136,7 @@ final class RipplesQueue {
                     self.retryCount = 0
                     self.isFlushing = false
                 }
-                ripplesLog("Flushed \(count) event(s)")
+                ripplesDebug("Flushed \(count) event(s)")
             } else if retryable {
                 self.stateLock.withLock {
                     self.retryCount += 1

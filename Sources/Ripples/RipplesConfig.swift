@@ -37,7 +37,7 @@ public final class RipplesConfig {
     /// Optional callback for transport errors. Useful for host-app logging.
     public var onError: ((Error) -> Void)?
 
-    /// Toggle verbose logs (off by default).
+    /// Enable verbose debug logs (off by default). Errors are always logged regardless of this setting.
     public static var debugLogging: Bool = false
 
     public init(projectToken: String) {

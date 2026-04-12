@@ -1,8 +1,7 @@
 import Foundation
 
-/// A small file-backed FIFO queue, modelled on PostHog's
-/// `PostHogFileBackedQueue`: each event is a single file in a directory, the
-/// in-memory list is just sorted filenames. This survives app restarts and
+/// A small file-backed FIFO queue: each event is a single file in a directory,
+/// the in-memory list is just sorted filenames. This survives app restarts and
 /// keeps memory pressure flat regardless of queue depth.
 final class RipplesFileBackedQueue {
 
