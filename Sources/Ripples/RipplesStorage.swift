@@ -11,7 +11,7 @@ final class RipplesStorage {
 
     private let baseDir: URL
 
-    init(publishableKey: String) {
+    init(projectToken: String) {
         let fm = FileManager.default
         let appSupport = (try? fm.url(for: .applicationSupportDirectory,
                                      in: .userDomainMask,
@@ -20,7 +20,7 @@ final class RipplesStorage {
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
 
         // Scope to the key so multiple Ripples instances don't collide.
-        let safeKey = publishableKey
+        let safeKey = projectToken
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: ":", with: "_")
         baseDir = appSupport

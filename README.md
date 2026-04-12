@@ -1,10 +1,6 @@
 # Ripples iOS SDK
 
 iOS / macOS / tvOS / watchOS client for [Ripples.sh](https://ripples.sh).
-Mirrors the [`ripples-php`](../ripples-php) wire format (`POST /v1/ingest/batch`,
-`Bearer` auth) and adopts the offline-first patterns of the PostHog iOS SDK:
-file-backed queue, `NWPathMonitor` reachability, periodic + threshold + lifecycle
-flushes, and exponential backoff on transient failures.
 
 ## Install
 
@@ -16,17 +12,17 @@ Swift Package Manager:
 
 ## Keys
 
-Ripples issues two keys per project:
+Ripples projects have two identifiers:
 
-| Key        | Prefix  | Where to use              | Scope                                     |
-|------------|---------|---------------------------|-------------------------------------------|
-| Secret     | `priv_` | Server-side only          | Full ingest access, incl. `revenue`       |
-| Publishable| `pub_`  | iOS / browser / any client| `track`, `identify`, `signup` only        |
+| Key            | Format  | Where to use              | Scope                                   |
+|----------------|---------|---------------------------|-----------------------------------------|
+| Secret key     | `priv_…`| Server-side only          | Full ingest access, incl. `revenue`     |
+| Project token  | String    | iOS / web / any client    | `track`, `identify`, `signup` only      |
 
-The iOS SDK takes the **publishable** key. It's safe to bundle in your app:
-revenue events from `pub_` keys are rejected server-side, so a scraped key
-can't forge your MRR / LTV numbers. If you see abuse, rotate the key in
-project settings.
+The iOS SDK takes the **project token** — the same token the web JS snippet
+uses. It's safe to bundle: revenue events from the token are rejected
+server-side, so a scraped key can't forge MRR / LTV. Rotate in project
+settings if you see abuse.
 
 **Never** ship the `priv_` key in a mobile or web app.
 
@@ -37,7 +33,7 @@ Initialize once at app launch:
 ```swift
 import Ripples
 
-Ripples.setup(RipplesConfig(publishableKey: "pub_your_publishable_key"))
+Ripples.setup(RipplesConfig(projectToken: "YOUR-PROJECT-TOKEN"))
 ```
 
 Then, anywhere:

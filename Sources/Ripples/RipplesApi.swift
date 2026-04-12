@@ -40,7 +40,7 @@ final class RipplesApi {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(config.publishableKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(config.projectToken)", forHTTPHeaderField: "Authorization")
 
         session.uploadTask(with: request, from: data) { _, response, error in
             if let error = error {

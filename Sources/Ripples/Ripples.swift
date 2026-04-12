@@ -42,7 +42,7 @@ public final class Ripples {
                 return
             }
             self.config = config
-            let storage = RipplesStorage(publishableKey: config.publishableKey)
+            let storage = RipplesStorage(projectToken: config.projectToken)
             let api = RipplesApi(config)
             let reachability = RipplesReachability()
             let queue = RipplesQueue(config: config, api: api, storage: storage, reachability: reachability)

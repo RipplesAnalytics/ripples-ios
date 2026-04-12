@@ -9,7 +9,7 @@ final class RipplesTests: XCTestCase {
     }
 
     func testIdentifyAndTrackEnqueue() {
-        let config = RipplesConfig(publishableKey: "pub_test_key")
+        let config = RipplesConfig(projectToken: "00000000-0000-0000-0000-000000000000")
         config.flushIntervalSeconds = 0
         config.flushAt = 999
         Ripples.setup(config)
