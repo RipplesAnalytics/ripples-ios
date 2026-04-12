@@ -14,6 +14,22 @@ Swift Package Manager:
 .package(url: "https://github.com/ripples-sh/ripples-ios", from: "0.1.0")
 ```
 
+## Keys
+
+Ripples issues two keys per project:
+
+| Key        | Prefix  | Where to use              | Scope                                     |
+|------------|---------|---------------------------|-------------------------------------------|
+| Secret     | `priv_` | Server-side only          | Full ingest access, incl. `revenue`       |
+| Publishable| `pub_`  | iOS / browser / any client| `track`, `identify`, `signup` only        |
+
+The iOS SDK takes the **publishable** key. It's safe to bundle in your app:
+revenue events from `pub_` keys are rejected server-side, so a scraped key
+can't forge your MRR / LTV numbers. If you see abuse, rotate the key in
+project settings.
+
+**Never** ship the `priv_` key in a mobile or web app.
+
 ## Usage
 
 Initialize once at app launch:
@@ -21,7 +37,7 @@ Initialize once at app launch:
 ```swift
 import Ripples
 
-Ripples.setup(RipplesConfig(apiKey: "priv_your_secret_key"))
+Ripples.setup(RipplesConfig(publishableKey: "pub_your_publishable_key"))
 ```
 
 Then, anywhere:

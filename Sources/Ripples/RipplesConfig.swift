@@ -2,15 +2,18 @@ import Foundation
 
 /// Configuration for the Ripples SDK.
 ///
-/// Mirrors the option surface of the PHP SDK: a key, an optional self-hosted
-/// base URL, and queue/flush tuning. Defaults are tuned for mobile clients
-/// (smaller batches, periodic flush, persistent queue across launches).
+/// Uses a **publishable** key (`pub_…`), not the server-side secret key
+/// (`priv_…`). Publishable keys are safe to bundle in iOS apps: they're
+/// scoped to the write-only `/v1/ingest` endpoints and cannot submit revenue
+/// events (those are rejected server-side to prevent MRR/LTV forgery from a
+/// scraped key). Rotate via the project dashboard if abuse is detected.
 public final class RipplesConfig {
 
     public static let defaultHost = "https://api.ripples.sh"
 
-    /// The publishable / secret key used to authenticate with the Ripples API.
-    public let apiKey: String
+    /// Publishable key for this project. Starts with `pub_`. Grab it from
+    /// your Ripples project settings — never ship `priv_` keys in a client.
+    public let publishableKey: String
 
     /// API base URL. Override for self-hosted installs.
     public var host: String = RipplesConfig.defaultHost
@@ -36,7 +39,18 @@ public final class RipplesConfig {
     /// Toggle verbose logs (off by default).
     public static var debugLogging: Bool = false
 
-    public init(apiKey: String) {
-        self.apiKey = apiKey
+    public init(publishableKey: String) {
+        // Warn loudly in debug if someone pastes a server secret into an app.
+        // We don't throw — a malformed key gets rejected by the server anyway,
+        // and crashing the host app on init is worse than a log line.
+        #if DEBUG
+        if publishableKey.hasPrefix("priv_") {
+            assertionFailure("""
+                Ripples: never ship a `priv_` secret key in a client app.
+                Use the publishable `pub_` key from your project settings.
+                """)
+        }
+        #endif
+        self.publishableKey = publishableKey
     }
 }
