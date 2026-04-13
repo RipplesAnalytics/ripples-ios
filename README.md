@@ -65,11 +65,23 @@ Ripples.shared.track("added transaction", properties: [
 
 Use the SwiftUI modifier — one line per screen:
 
+When `name` is omitted the screen name is derived from the Swift type with the
+`View` suffix stripped — `HomeView` → `"Home"`.
+
 ```swift
+// Automatic name from type: HomeView → "Home"
 struct HomeView: View {
     var body: some View {
         List { ... }
-            .trackScreen("Home")
+            .trackScreen()
+    }
+}
+
+// Explicit name
+struct OnboardingView: View {
+    var body: some View {
+        VStack { ... }
+            .trackScreen("Onboarding Step 1")
     }
 }
 
@@ -78,7 +90,7 @@ struct ListDetailView: View {
     let listId: String
     var body: some View {
         ScrollView { ... }
-            .trackScreen("ListDetail", properties: ["list_id": listId])
+            .trackScreen(properties: ["list_id": listId])
     }
 }
 ```
