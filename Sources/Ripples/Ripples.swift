@@ -84,6 +84,30 @@ public final class Ripples {
                 with: properties)
     }
 
+    /// Record a screen view. Call this when a screen becomes visible, or use
+    /// the `.trackScreen(_:)` SwiftUI modifier instead.
+    ///
+    /// The screen name is stored in `path` (e.g. `"/Home"`) and appears in
+    /// the Pages report alongside web pageviews.
+    public func screen(_ screenName: String,
+                       userId: String = "",
+                       properties: [String: Any] = [:])
+    {
+        var base: [String: Any] = [
+            "name": screenName,
+            "path": screenName,
+        ]
+        if !userId.isEmpty { base["user_id"] = userId }
+
+        // Mark the first screen in a new session as the session entry.
+        if let ctx = context, ctx.isFirstScreenInSession {
+            base["session_start"] = true
+            ctx.markSessionStartSent()
+        }
+
+        enqueue("pageview", merging: base, with: properties)
+    }
+
     /// Force-flush the queue. The completion fires once the in-flight batch
     /// finishes (or immediately if the queue was empty / paused).
     public func flush(completion: (() -> Void)? = nil) {

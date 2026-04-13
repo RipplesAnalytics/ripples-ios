@@ -13,6 +13,7 @@ final class RipplesContext {
 
     private let lock = NSLock()
     private var _sessionId: String
+    private var _sessionStartSent: Bool = false
     private var backgroundedAt: Date?
 
     /// Static device fields merged into every event.
@@ -27,6 +28,16 @@ final class RipplesContext {
         lock.withLock { _sessionId }
     }
 
+    /// True if no screen view has been sent yet in the current session.
+    var isFirstScreenInSession: Bool {
+        lock.withLock { !_sessionStartSent }
+    }
+
+    /// Call after emitting a pageview with `session_start: true`.
+    func markSessionStartSent() {
+        lock.withLock { _sessionStartSent = true }
+    }
+
     func didEnterBackground() {
         lock.withLock { backgroundedAt = Date() }
     }
@@ -37,6 +48,7 @@ final class RipplesContext {
             if let bg = backgroundedAt,
                Date().timeIntervalSince(bg) >= RipplesContext.sessionTimeout {
                 _sessionId = UUID().uuidString.lowercased()
+                _sessionStartSent = false
             }
             backgroundedAt = nil
         }
