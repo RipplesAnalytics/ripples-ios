@@ -7,7 +7,7 @@ import SwiftUI
 private struct ScreenTrackingModifier: ViewModifier {
 
     let screenName: String
-    let userId: String
+    let properties: [String: Any]
 
     /// Ignore re-appearances within this window to avoid double-fires from
     /// SwiftUI's eager onAppear during tab/navigation transitions.
@@ -20,7 +20,7 @@ private struct ScreenTrackingModifier: ViewModifier {
             let now = Date()
             guard now.timeIntervalSince(lastFired) > Self.dedupeInterval else { return }
             lastFired = now
-            Ripples.shared.screen(screenName, userId: userId)
+            Ripples.shared.screen(screenName, properties: properties)
         }
     }
 }
@@ -37,11 +37,18 @@ public extension View {
     ///         }
     ///     }
     ///
+    ///     struct ListDetailView: View {
+    ///         var body: some View {
+    ///             ScrollView { ... }
+    ///                 .trackScreen("ListDetail", properties: ["list_id": listId])
+    ///         }
+    ///     }
+    ///
     /// - Parameters:
     ///   - name: Human-readable screen name shown in the Pages report.
-    ///   - userId: Optional. Pass the authenticated user's ID if known.
-    func trackScreen(_ name: String, userId: String = "") -> some View {
-        modifier(ScreenTrackingModifier(screenName: name, userId: userId))
+    ///   - properties: Optional extra properties attached to the screen view event.
+    func trackScreen(_ name: String, properties: [String: Any] = [:]) -> some View {
+        modifier(ScreenTrackingModifier(screenName: name, properties: properties))
     }
 }
 #endif

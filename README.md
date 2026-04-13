@@ -52,12 +52,10 @@ Ripples.shared.identify("user_123", traits: [
 ### Track events
 
 ```swift
-Ripples.shared.track("created a budget", userId: "user_123", properties: [
-    "area": "budgets",
-])
+Ripples.shared.track("created a budget", properties: ["area": "budgets"])
 
 // Mark the activation moment
-Ripples.shared.track("added transaction", userId: "user_123", properties: [
+Ripples.shared.track("added transaction", properties: [
     "area":      "transactions",
     "activated": true,
 ])
@@ -75,10 +73,12 @@ struct HomeView: View {
     }
 }
 
-struct ProfileView: View {
+// With extra properties
+struct ListDetailView: View {
+    let listId: String
     var body: some View {
-        Form { ... }
-            .trackScreen("Profile", userId: currentUserId)
+        ScrollView { ... }
+            .trackScreen("ListDetail", properties: ["list_id": listId])
     }
 }
 ```
@@ -86,7 +86,8 @@ struct ProfileView: View {
 Or call it imperatively (e.g. UIKit or custom navigation):
 
 ```swift
-Ripples.shared.screen("Settings", userId: "user_123")
+Ripples.shared.screen("Settings")
+Ripples.shared.screen("ListDetail", properties: ["list_id": listId])
 ```
 
 Screen views are stored as `pageview` events and appear in the **Pages** report

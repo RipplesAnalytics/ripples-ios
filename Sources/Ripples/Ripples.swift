@@ -75,13 +75,8 @@ public final class Ripples {
 
     /// Track a product-usage event. `properties` may include `area`,
     /// `activated`, and any custom keys.
-    public func track(_ actionName: String,
-                      userId: String,
-                      properties: [String: Any] = [:])
-    {
-        enqueue("track",
-                merging: ["name": actionName, "user_id": userId],
-                with: properties)
+    public func track(_ actionName: String, properties: [String: Any] = [:]) {
+        enqueue("track", merging: ["name": actionName], with: properties)
     }
 
     /// Record a screen view. Call this when a screen becomes visible, or use
@@ -89,15 +84,11 @@ public final class Ripples {
     ///
     /// The screen name is stored in `path` (e.g. `"/Home"`) and appears in
     /// the Pages report alongside web pageviews.
-    public func screen(_ screenName: String,
-                       userId: String = "",
-                       properties: [String: Any] = [:])
-    {
+    public func screen(_ screenName: String, properties: [String: Any] = [:]) {
         var base: [String: Any] = [
             "name": screenName,
             "path": screenName,
         ]
-        if !userId.isEmpty { base["user_id"] = userId }
 
         // Mark the first screen in a new session as the session entry.
         if let ctx = context, ctx.isFirstScreenInSession {
