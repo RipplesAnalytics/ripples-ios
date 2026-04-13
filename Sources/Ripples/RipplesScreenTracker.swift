@@ -28,29 +28,26 @@ private struct ScreenTrackingModifier: ViewModifier {
 public extension View {
     /// Track this view as a screen visit in Ripples.
     ///
-    /// When `name` is omitted the screen name is derived from the Swift type
-    /// name with the `View` suffix stripped — `HomeView` → `"Home"`.
+    ///     struct HomeView: View {
+    ///         var body: some View {
+    ///             List { ... }
+    ///                 .trackScreen("Home")
+    ///         }
+    ///     }
     ///
-    ///     // Automatic name
-    ///     List { ... }.trackScreen()
-    ///
-    ///     // Explicit name
-    ///     List { ... }.trackScreen("Home")
-    ///
-    ///     // With extra properties
-    ///     ScrollView { ... }.trackScreen(properties: ["list_id": listId])
-    ///     ScrollView { ... }.trackScreen("ListDetail", properties: ["list_id": listId])
+    ///     struct ListDetailView: View {
+    ///         let listId: String
+    ///         var body: some View {
+    ///             ScrollView { ... }
+    ///                 .trackScreen("ListDetail", properties: ["list_id": listId])
+    ///         }
+    ///     }
     ///
     /// - Parameters:
-    ///   - name: Screen name shown in the Pages report. Defaults to the view's
-    ///     type name with the `View` suffix removed.
+    ///   - name: Screen name shown in the Pages report.
     ///   - properties: Optional extra properties attached to the event.
-    func trackScreen(_ name: String? = nil, properties: [String: Any] = [:]) -> some View {
-        let resolved: String = name ?? {
-            let typeName = String(describing: type(of: self))
-            return typeName.hasSuffix("View") ? String(typeName.dropLast(4)) : typeName
-        }()
-        return modifier(ScreenTrackingModifier(screenName: resolved, properties: properties))
+    func trackScreen(_ name: String, properties: [String: Any] = [:]) -> some View {
+        modifier(ScreenTrackingModifier(screenName: name, properties: properties))
     }
 }
 #endif
