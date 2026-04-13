@@ -22,6 +22,8 @@ public final class Ripples {
     private var api: RipplesApi?
     private var queue: RipplesQueue?
     private var storage: RipplesStorage?
+    private var context: RipplesContext?
+    private var visitorId: String?
     private let setupLock = NSLock()
     private var lifecycleObservers: [NSObjectProtocol] = []
 
@@ -46,10 +48,18 @@ public final class Ripples {
             let api = RipplesApi(config)
             let reachability = RipplesReachability()
             let queue = RipplesQueue(config: config, api: api, storage: storage, reachability: reachability)
+            let context = RipplesContext()
+
+            // Restore or generate a persistent anonymous visitor ID.
+            let storedId = storage.readString(.distinctId)
+            let vid = storedId ?? UUID().uuidString.lowercased()
+            if storedId == nil { storage.writeString(.distinctId, vid) }
 
             self.storage = storage
             self.api = api
             self.queue = queue
+            self.context = context
+            self.visitorId = vid
 
             queue.start()
             registerLifecycleObservers()
@@ -100,6 +110,8 @@ public final class Ripples {
             queue = nil
             api = nil
             storage = nil
+            context = nil
+            visitorId = nil
             config = nil
         }
     }
@@ -116,25 +128,50 @@ public final class Ripples {
         }
         var props = base
         for (k, v) in extras { props[k] = v }
+
+        // Inject persistent visitor ID (callers may override by supplying their own).
+        if props["visitor_id"] == nil, let vid = visitorId {
+            props["visitor_id"] = vid
+        }
+
+        // Inject session ID and device context without overwriting caller-supplied values.
+        if let ctx = context {
+            if props["session_id"] == nil {
+                props["session_id"] = ctx.sessionId
+            }
+            for (k, v) in ctx.device where props[k] == nil {
+                props[k] = v
+            }
+        }
+
         queue.add(RipplesEvent(type: type, properties: props))
     }
 
     private func registerLifecycleObservers() {
         #if canImport(UIKit) && !os(watchOS)
         let center = NotificationCenter.default
-        // Flush when the app is backgrounded / terminated so we don't lose
-        // events sitting in the queue.
+
+        // Mark background time for session expiry tracking; also flush the queue.
         let backgroundToken = center.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil, queue: nil
-        ) { [weak self] _ in self?.flush() }
+        ) { [weak self] _ in
+            self?.context?.didEnterBackground()
+            self?.flush()
+        }
+
+        // Rotate session if the app was backgrounded long enough.
+        let foregroundToken = center.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil, queue: nil
+        ) { [weak self] _ in self?.context?.didBecomeActive() }
 
         let terminateToken = center.addObserver(
             forName: UIApplication.willTerminateNotification,
             object: nil, queue: nil
         ) { [weak self] _ in self?.flush() }
 
-        lifecycleObservers = [backgroundToken, terminateToken]
+        lifecycleObservers = [backgroundToken, foregroundToken, terminateToken]
         #endif
     }
 }
