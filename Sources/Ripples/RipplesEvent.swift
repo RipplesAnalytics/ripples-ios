@@ -8,17 +8,22 @@ struct RipplesEvent {
     let type: String
     let properties: [String: Any]
     let sentAt: Date
+    /// Stable per-event UUID generated at enqueue time and persisted to disk.
+    /// Survives retries so the server can deduplicate on `event_id`.
+    let eventId: String
 
     init(type: String, properties: [String: Any], sentAt: Date = Date()) {
         self.type = type
         self.properties = properties
         self.sentAt = sentAt
+        self.eventId = UUID().uuidString.lowercased()
     }
 
     func toJSON() -> [String: Any] {
         var json: [String: Any] = properties
         json["type"] = type
         json["sent_at"] = RipplesEvent.iso8601(sentAt)
+        json["event_id"] = eventId
         return json
     }
 
