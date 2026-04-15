@@ -51,17 +51,45 @@ Ripples.shared.identify("user_123", traits: [
 
 ### Track events
 
+Pass `area` to group actions into a product area (shown in the adoption dashboard):
+
 ```swift
-Ripples.shared.track("created a budget", properties: ["area": "budgets"])
+Ripples.shared.track("created a budget", area: "budgets")
 
 // Mark the activation moment
-Ripples.shared.track("added transaction", properties: [
-    "area":      "transactions",
+Ripples.shared.track("added transaction", area: "transactions", properties: [
     "activated": true,
 ])
+
+// area can also be passed inside properties — both forms are equivalent
+Ripples.shared.track("exported report", properties: ["area": "reports"])
 ```
 
+#### Keeping user data fresh
+
+Pass `userProperties` alongside any event to let the backend upsert the user
+record without a separate `identify` call. This mirrors how PostHog handles
+`$set` — one request carries both the event and the trait update:
+
+```swift
+Ripples.shared.track("opened dashboard",
+                     area: "core",
+                     userProperties: ["plan": "pro", "company": "Acme"])
+```
+
+Traits are also cached automatically from the last `identify()` call and
+forwarded with every subsequent event, so you generally don't need to pass
+`userProperties` explicitly — it's there for cases where you have fresh data
+at event time. Pass an empty dictionary `[:]` to suppress forwarding for a
+specific call.
+
 ### Track screen views
+
+Pass `area` to group screens with the same product area as your track calls:
+
+```swift
+Ripples.shared.screen("BudgetList", area: "budgets")
+```
 
 Use the SwiftUI modifier — one line per screen:
 
@@ -73,12 +101,12 @@ struct HomeView: View {
     }
 }
 
-// With extra properties
+// With area and extra properties
 struct ListDetailView: View {
     let listId: String
     var body: some View {
         ScrollView { ... }
-            .trackScreen("ListDetail", properties: ["list_id": listId])
+            .trackScreen("ListDetail", properties: ["area": "lists", "list_id": listId])
     }
 }
 ```
@@ -87,7 +115,7 @@ Or call it imperatively (e.g. UIKit or custom navigation):
 
 ```swift
 Ripples.shared.screen("Settings")
-Ripples.shared.screen("ListDetail", properties: ["list_id": listId])
+Ripples.shared.screen("ListDetail", area: "lists", properties: ["list_id": listId])
 ```
 
 Screen views are stored as `pageview` events and appear in the **Pages** report

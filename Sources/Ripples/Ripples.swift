@@ -28,6 +28,12 @@ public final class Ripples {
     private let setupLock = NSLock()
     private var lifecycleObservers: [NSObjectProtocol] = []
 
+    /// Traits cached from the last `identify()` call. Auto-included in every
+    /// subsequent event so the backend can keep user records fresh without
+    /// requiring an explicit `identify()` on every session.
+    private let traitsLock = NSLock()
+    private var cachedTraits: [String: Any] = [:]
+
     private init() {}
 
     /// Initialize the SDK. Safe to call multiple times — subsequent calls
@@ -71,14 +77,47 @@ public final class Ripples {
     // MARK: - Public API
 
     /// Set or update traits on a user. Extra keys become custom properties.
+    ///
+    /// Traits are also cached locally so they can be included in subsequent
+    /// `track` and `screen` events — keeping the user record fresh without
+    /// requiring a separate `identify` call on every session.
     public func identify(_ userId: String, traits: [String: Any] = [:]) {
+        if !traits.isEmpty {
+            traitsLock.withLock {
+                for (k, v) in traits { cachedTraits[k] = v }
+            }
+        }
         enqueue("identify", merging: ["user_id": userId], with: traits)
     }
 
-    /// Track a product-usage event. `properties` may include `area`,
-    /// `activated`, and any custom keys.
-    public func track(_ actionName: String, properties: [String: Any] = [:]) {
-        enqueue("track", merging: ["name": actionName], with: properties)
+    /// Track a product-usage event.
+    ///
+    /// - Parameters:
+    ///   - actionName: The action name (e.g. `"created a budget"`).
+    ///   - area: Optional product area (e.g. `"budgets"`). Groups actions for
+    ///     adoption analysis in the Ripples dashboard. Ignored if `properties`
+    ///     already contains an `"area"` key.
+    ///   - properties: Additional properties — may include `activated: true`
+    ///     to mark this occurrence as the activation moment, plus any custom keys.
+    ///   - userProperties: Traits to attach alongside this event so the backend
+    ///     can upsert the user record without a separate `identify` call. When
+    ///     `nil`, the traits cached from the last `identify()` are used instead.
+    ///     Pass an empty dictionary to suppress trait forwarding entirely.
+    public func track(_ actionName: String,
+                      area: String? = nil,
+                      properties: [String: Any] = [:],
+                      userProperties: [String: Any]? = nil)
+    {
+        var props = properties
+        if let area = area, props["area"] == nil {
+            props["area"] = area
+        }
+        var base: [String: Any] = ["name": actionName]
+        let traits = userProperties ?? traitsLock.withLock { cachedTraits.isEmpty ? nil : cachedTraits }
+        if let traits = traits, !traits.isEmpty {
+            base["traits"] = traits
+        }
+        enqueue("track", merging: base, with: props)
     }
 
     /// Record a screen view. Call this when a screen becomes visible, or use
@@ -86,16 +125,37 @@ public final class Ripples {
     ///
     /// The screen name is stored in `path` (e.g. `"/Home"`) and appears in
     /// the Pages report alongside web pageviews.
-    public func screen(_ screenName: String, properties: [String: Any] = [:]) {
+    ///
+    /// - Parameters:
+    ///   - screenName: The screen name (e.g. `"Home"`).
+    ///   - area: Optional product area to group this screen with related actions.
+    ///     Ignored if `properties` already contains an `"area"` key.
+    ///   - properties: Additional properties merged into the pageview event.
+    ///   - userProperties: Traits to attach alongside this event so the backend
+    ///     can upsert the user record. Falls back to cached traits from `identify()`.
+    ///     Pass an empty dictionary to suppress trait forwarding entirely.
+    public func screen(_ screenName: String,
+                       area: String? = nil,
+                       properties: [String: Any] = [:],
+                       userProperties: [String: Any]? = nil)
+    {
         var base: [String: Any] = [
             "name": screenName,
             "path": screenName,
         ]
+        if let area = area, properties["area"] == nil {
+            base["area"] = area
+        }
 
         // Mark the first screen in a new session as the session entry.
         if let ctx = context, ctx.isFirstScreenInSession {
             base["session_start"] = true
             ctx.markSessionStartSent()
+        }
+
+        let traits = userProperties ?? traitsLock.withLock { cachedTraits.isEmpty ? nil : cachedTraits }
+        if let traits = traits, !traits.isEmpty {
+            base["traits"] = traits
         }
 
         enqueue("pageview", merging: base, with: properties)
@@ -132,6 +192,7 @@ public final class Ripples {
             visitorId = nil
             config = nil
         }
+        traitsLock.withLock { cachedTraits = [:] }
     }
 
     // MARK: - Internals

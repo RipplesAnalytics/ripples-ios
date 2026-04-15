@@ -34,11 +34,12 @@ final class RipplesContext {
     /// Static fields merged into every event (top-level columns).
     let device: [String: Any]
 
-    /// Additional flags sent top-level but not yet persisted server-side.
-    /// TODO(db): add dedicated columns for is_testflight, is_emulator,
-    /// is_sideloaded, is_mac_catalyst, is_ios_on_mac, network_type.
-    /// Until then these arrive in the event payload and can be surfaced via
-    /// the `properties` JSON bag on the backend if needed.
+    /// System flags stored in the `properties` Map under `$`-prefixed keys.
+    /// `$`-prefixed keys are treated as system/SDK metadata and hidden from
+    /// user-facing property displays (same convention as PostHog).
+    /// TODO(db): promote to dedicated columns when dashboards need them:
+    ///   $is_testflight, $is_emulator, $is_sideloaded, $is_mac_catalyst,
+    ///   $is_ios_on_mac, $network_type, $app_build.
     let extras: [String: Any]
 
     private let screenSizeLock = NSLock()
@@ -109,7 +110,7 @@ final class RipplesContext {
         out["timezone_offset"] = -(tz.secondsFromGMT() / 60)
 
         if let n = networkType {
-            out["network_type"] = n // TODO(db): add column; currently sent as extra.
+            out["$network_type"] = n // TODO(db): add column
         }
         return out
     }
@@ -184,15 +185,15 @@ final class RipplesContext {
     /// Flags sent but not (yet) column-mapped on the backend.
     private static func collectExtras() -> [String: Any] {
         var ex: [String: Any] = [
-            "is_emulator":      isSimulator,      // TODO(db): add column
-            "is_testflight":    isTestFlight,    // TODO(db): add column
-            "is_sideloaded":    isSideloaded,    // TODO(db): add column
-            "is_mac_catalyst":  isMacCatalystApp, // TODO(db): add column
-            "is_ios_on_mac":    isIOSAppOnMac,   // TODO(db): add column
+            "$is_emulator":     isSimulator,      // TODO(db): add column
+            "$is_testflight":   isTestFlight,     // TODO(db): add column
+            "$is_sideloaded":   isSideloaded,     // TODO(db): add column
+            "$is_mac_catalyst": isMacCatalystApp, // TODO(db): add column
+            "$is_ios_on_mac":   isIOSAppOnMac,    // TODO(db): add column
         ]
         if let info = Bundle.main.infoDictionary,
            let appBuild = info["CFBundleVersion"] as? String {
-            ex["app_build"] = appBuild // dup of engine_version for clarity in properties
+            ex["$app_build"] = appBuild // TODO(db): add column
         }
         return ex
     }
