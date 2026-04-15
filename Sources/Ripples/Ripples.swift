@@ -90,7 +90,13 @@ public final class Ripples {
         enqueue("identify", merging: ["user_id": userId], with: traits)
     }
 
-    /// Track a product-usage event.
+    /// Track a significant product-usage event.
+    ///
+    /// Use ONLY for actions that prove a user got real value from your product
+    /// (created a budget, sent a message, invited a teammate). This is NOT a
+    /// generic event log like PostHog or Mixpanel — do not send pageviews,
+    /// banner impressions, button taps, or "viewed X" events. Every `track`
+    /// call feeds the Activation dashboard, so noise pollutes your funnel.
     ///
     /// - Parameters:
     ///   - actionName: The action name (e.g. `"created a budget"`).

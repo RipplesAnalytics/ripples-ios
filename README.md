@@ -51,6 +51,8 @@ Ripples.shared.identify("user_123", traits: [
 
 ### Track events
 
+Call `track` **only** for significant product usage — actions that prove a user got real value (created a budget, sent a message, invited a teammate). This is **not** a generic event log like PostHog or Mixpanel: do not send screen views, banner impressions, button taps, or "viewed X" events. Every `track` call feeds the Activation dashboard, so noise here pollutes your funnel. (Use `screen(_:)` / `trackScreen` for navigation.)
+
 Pass `area` to group actions into a product area (shown in the adoption dashboard):
 
 ```swift
@@ -72,8 +74,8 @@ record without a separate `identify` call. This mirrors how PostHog handles
 `$set` — one request carries both the event and the trait update:
 
 ```swift
-Ripples.shared.track("opened dashboard",
-                     area: "core",
+Ripples.shared.track("created a budget",
+                     area: "budgets",
                      userProperties: ["plan": "pro", "company": "Acme"])
 ```
 
