@@ -8,7 +8,18 @@ final class RipplesReachability {
 
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "sh.ripples.reachability")
-    private(set) var isOnline: Bool = true
+    private let stateLock = NSLock()
+    private var _isOnline: Bool = true
+    private var _networkType: String?
+
+    var isOnline: Bool {
+        stateLock.withLock { _isOnline }
+    }
+
+    /// Last observed interface type: "wifi", "cellular", "wired", "other", or nil when offline.
+    var networkType: String? {
+        stateLock.withLock { _networkType }
+    }
 
     var onChange: ((Bool) -> Void)?
 
@@ -16,11 +27,23 @@ final class RipplesReachability {
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }
             let online = path.status == .satisfied
-            let changed = online != self.isOnline
-            self.isOnline = online
-            if changed { self.onChange?(online) }
+            let type: String? = online ? RipplesReachability.classify(path) : nil
+            let wasOnline = self.stateLock.withLock { () -> Bool in
+                let prev = self._isOnline
+                self._isOnline = online
+                self._networkType = type
+                return prev
+            }
+            if online != wasOnline { self.onChange?(online) }
         }
         monitor.start(queue: queue)
+    }
+
+    private static func classify(_ path: NWPath) -> String {
+        if path.usesInterfaceType(.wifi)     { return "wifi" }
+        if path.usesInterfaceType(.cellular) { return "cellular" }
+        if path.usesInterfaceType(.wiredEthernet) { return "wired" }
+        return "other"
     }
 
     func stop() {

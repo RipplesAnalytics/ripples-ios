@@ -23,6 +23,7 @@ public final class Ripples {
     private var queue: RipplesQueue?
     private var storage: RipplesStorage?
     private var context: RipplesContext?
+    private var reachability: RipplesReachability?
     private var visitorId: String?
     private let setupLock = NSLock()
     private var lifecycleObservers: [NSObjectProtocol] = []
@@ -59,6 +60,7 @@ public final class Ripples {
             self.api = api
             self.queue = queue
             self.context = context
+            self.reachability = reachability
             self.visitorId = vid
 
             queue.start()
@@ -126,6 +128,7 @@ public final class Ripples {
             api = nil
             storage = nil
             context = nil
+            reachability = nil
             visitorId = nil
             config = nil
         }
@@ -155,6 +158,16 @@ public final class Ripples {
                 props["session_id"] = ctx.sessionId
             }
             for (k, v) in ctx.device where props[k] == nil {
+                props[k] = v
+            }
+            let dyn = ctx.dynamic(networkType: reachability?.networkType)
+            for (k, v) in dyn where props[k] == nil {
+                props[k] = v
+            }
+            // TODO(db): these flags (is_testflight, is_emulator, is_sideloaded,
+            // is_mac_catalyst, is_ios_on_mac, app_build) are sent but not yet
+            // persisted server-side — add columns when dashboards need them.
+            for (k, v) in ctx.extras where props[k] == nil {
                 props[k] = v
             }
         }
