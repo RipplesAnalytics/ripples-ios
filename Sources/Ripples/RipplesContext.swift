@@ -91,23 +91,27 @@ final class RipplesContext {
 
     /// Recomputed on every event — screen size may change on rotation,
     /// timezone on travel, network type on handoff between wifi/cellular.
+    ///
+    /// Keys are $-prefixed so user-supplied properties (e.g. a track() call
+    /// with `platform="web"` to tag an event) can't accidentally collide
+    /// with SDK-collected device context — the prefix reserves the namespace.
     func dynamic(networkType: String?) -> [String: Any] {
         var out: [String: Any] = [:]
 
         let size = screenSizeLock.withLock { cachedScreenSize }
         if let s = size {
-            out["screen_width"]   = Int(s.width)
-            out["screen_height"]  = Int(s.height)
+            out["$screen_width"]   = Int(s.width)
+            out["$screen_height"]  = Int(s.height)
             // On native there's no browser chrome — viewport == screen.
-            out["viewport_width"]  = Int(s.width)
-            out["viewport_height"] = Int(s.height)
+            out["$viewport_width"]  = Int(s.width)
+            out["$viewport_height"] = Int(s.height)
         }
 
         let tz = TimeZone.current
-        out["client_timezone"] = tz.identifier
+        out["$client_timezone"] = tz.identifier
         // Match JS `Date.getTimezoneOffset()` convention: minutes, local→UTC
         // (e.g. Europe/Moscow UTC+3 → -180).
-        out["timezone_offset"] = -(tz.secondsFromGMT() / 60)
+        out["$timezone_offset"] = -(tz.secondsFromGMT() / 60)
 
         if let n = networkType {
             out["$network_type"] = n // TODO(db): add column
@@ -119,29 +123,29 @@ final class RipplesContext {
 
     private static func collectStaticContext() -> [String: Any] {
         var ctx: [String: Any] = [
-            "platform":        "ios",
-            "sdk_name":        "ios",
-            "sdk_version":     RipplesVersion.current,
-            "device_brand":    "Apple",
-            "language":        Locale.preferredLanguages.first ?? Locale.current.identifier,
-            "client_timezone": TimeZone.current.identifier,
-            "cpu_architecture": cpuArchitecture(),
+            "$platform":        "ios",
+            "$sdk_name":        "ios",
+            "$sdk_version":     RipplesVersion.current,
+            "$device_brand":    "Apple",
+            "$language":        Locale.preferredLanguages.first ?? Locale.current.identifier,
+            "$client_timezone": TimeZone.current.identifier,
+            "$cpu_architecture": cpuArchitecture(),
         ]
 
         // App info → universal schema via browser/browser_version.
         let info = Bundle.main.infoDictionary
         if let appName = info?[kCFBundleNameKey as String] as? String
             ?? info?["CFBundleDisplayName"] as? String {
-            ctx["browser"] = appName
+            ctx["$browser"] = appName
         }
         if let appVersion = info?["CFBundleShortVersionString"] as? String {
-            ctx["browser_version"] = appVersion
+            ctx["$browser_version"] = appVersion
         }
         if let appBuild = info?["CFBundleVersion"] as? String {
-            ctx["engine_version"] = appBuild
+            ctx["$engine_version"] = appBuild
         }
         if let bundleId = Bundle.main.bundleIdentifier {
-            ctx["hostname"] = bundleId
+            ctx["$hostname"] = bundleId
         }
 
         let runningOnMac = isMacCatalystApp || isIOSAppOnMac
@@ -150,33 +154,33 @@ final class RipplesContext {
         let dev = UIDevice.current
 
         // Real hardware model (e.g. "iPhone15,2") via sysctl, not generic "iPhone".
-        ctx["device_model"] = hardwareModel()
+        ctx["$device_model"] = hardwareModel()
 
         if runningOnMac {
-            ctx["os"] = "macOS"
-            ctx["os_version"] = macOSVersionString()
-            ctx["device_type"] = "desktop"
-            ctx["engine"] = "macOS"
+            ctx["$os"] = "macOS"
+            ctx["$os_version"] = macOSVersionString()
+            ctx["$device_type"] = "desktop"
+            ctx["$engine"] = "macOS"
         } else {
-            ctx["os"] = dev.systemName                // "iOS", "iPadOS"
-            ctx["os_version"] = dev.systemVersion     // "18.2"
-            ctx["engine"] = dev.systemName
+            ctx["$os"] = dev.systemName                // "iOS", "iPadOS"
+            ctx["$os_version"] = dev.systemVersion     // "18.2"
+            ctx["$engine"] = dev.systemName
 
             switch dev.userInterfaceIdiom {
-            case .phone:  ctx["device_type"] = "mobile"
-            case .pad:    ctx["device_type"] = "tablet"
-            case .mac:    ctx["device_type"] = "desktop"
-            case .tv:     ctx["device_type"] = "tv"
-            case .carPlay: ctx["device_type"] = "carplay"
-            default:      ctx["device_type"] = "mobile"
+            case .phone:  ctx["$device_type"] = "mobile"
+            case .pad:    ctx["$device_type"] = "tablet"
+            case .mac:    ctx["$device_type"] = "desktop"
+            case .tv:     ctx["$device_type"] = "tv"
+            case .carPlay: ctx["$device_type"] = "carplay"
+            default:      ctx["$device_type"] = "mobile"
             }
         }
         #elseif os(macOS)
-        ctx["os"] = "macOS"
-        ctx["os_version"] = macOSVersionString()
-        ctx["device_type"] = "desktop"
-        ctx["device_model"] = hardwareModel()
-        ctx["engine"] = "macOS"
+        ctx["$os"] = "macOS"
+        ctx["$os_version"] = macOSVersionString()
+        ctx["$device_type"] = "desktop"
+        ctx["$device_model"] = hardwareModel()
+        ctx["$engine"] = "macOS"
         #endif
 
         return ctx
