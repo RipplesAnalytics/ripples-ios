@@ -87,7 +87,7 @@ public final class Ripples {
                 for (k, v) in traits { cachedTraits[k] = v }
             }
         }
-        enqueue("identify", merging: ["user_id": userId], with: traits)
+        enqueue("identify", merging: ["$user_id": userId], with: traits)
     }
 
     /// Track a significant product-usage event.
@@ -115,13 +115,20 @@ public final class Ripples {
                       userProperties: [String: Any]? = nil)
     {
         var props = properties
-        if let area = area, props["area"] == nil {
-            props["area"] = area
+        var base: [String: Any] = ["$name": actionName]
+        if let area = area {
+            base["$area"] = area
         }
-        var base: [String: Any] = ["name": actionName]
+        // Move system keys from user properties to $-prefixed system keys.
+        if let area = props.removeValue(forKey: "area") {
+            if base["$area"] == nil { base["$area"] = area }
+        }
+        if let activated = props.removeValue(forKey: "activated") {
+            base["$activated"] = activated
+        }
         let traits = userProperties ?? traitsLock.withLock { cachedTraits.isEmpty ? nil : cachedTraits }
         if let traits = traits, !traits.isEmpty {
-            base["traits"] = traits
+            base["$traits"] = traits
         }
         enqueue("track", merging: base, with: props)
     }
@@ -145,26 +152,29 @@ public final class Ripples {
                        properties: [String: Any] = [:],
                        userProperties: [String: Any]? = nil)
     {
+        var props = properties
         var base: [String: Any] = [
-            "name": screenName,
-            "path": screenName,
+            "$name": screenName,
+            "$path": screenName,
         ]
-        if let area = area, properties["area"] == nil {
-            base["area"] = area
+        if let area = area {
+            base["$area"] = area
+        } else if let area = props.removeValue(forKey: "area") {
+            base["$area"] = area
         }
 
         // Mark the first screen in a new session as the session entry.
         if let ctx = context, ctx.isFirstScreenInSession {
-            base["session_start"] = true
+            base["$session_start"] = true
             ctx.markSessionStartSent()
         }
 
         let traits = userProperties ?? traitsLock.withLock { cachedTraits.isEmpty ? nil : cachedTraits }
         if let traits = traits, !traits.isEmpty {
-            base["traits"] = traits
+            base["$traits"] = traits
         }
 
-        enqueue("pageview", merging: base, with: properties)
+        enqueue("pageview", merging: base, with: props)
     }
 
     /// Force-flush the queue. The completion fires once the in-flight batch
@@ -211,18 +221,20 @@ public final class Ripples {
             ripplesLog("SDK not initialized — call Ripples.setup() before sending events. Dropping '\(type)' call.")
             return
         }
-        var props = base
-        for (k, v) in extras { props[k] = v }
+        // Merge user properties first, then system fields on top so $-prefixed
+        // keys can never be overwritten by user-supplied properties.
+        var props = extras
+        for (k, v) in base { props[k] = v }
 
-        // Inject persistent visitor ID (callers may override by supplying their own).
-        if props["visitor_id"] == nil, let vid = visitorId {
-            props["visitor_id"] = vid
+        // Inject persistent visitor ID.
+        if props["$visitor_id"] == nil, let vid = visitorId {
+            props["$visitor_id"] = vid
         }
 
-        // Inject session ID and device context without overwriting caller-supplied values.
+        // Inject session ID and device context.
         if let ctx = context {
-            if props["session_id"] == nil {
-                props["session_id"] = ctx.sessionId
+            if props["$session_id"] == nil {
+                props["$session_id"] = ctx.sessionId
             }
             for (k, v) in ctx.device where props[k] == nil {
                 props[k] = v

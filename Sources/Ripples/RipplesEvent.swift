@@ -21,9 +21,9 @@ struct RipplesEvent {
 
     func toJSON() -> [String: Any] {
         var json: [String: Any] = properties
-        json["type"] = type
-        json["sent_at"] = RipplesEvent.iso8601(sentAt)
-        json["event_id"] = eventId
+        json["$type"] = type
+        json["$sent_at"] = RipplesEvent.iso8601(sentAt)
+        json["$event_id"] = eventId
         return json
     }
 
