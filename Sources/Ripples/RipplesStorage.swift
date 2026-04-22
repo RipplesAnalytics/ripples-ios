@@ -6,7 +6,8 @@ final class RipplesStorage {
 
     enum Key: String {
         case queue
-        case distinctId = "distinct_id"
+        case visitorId = "visitor_id"
+        case userId = "user_id"
     }
 
     private let baseDir: URL

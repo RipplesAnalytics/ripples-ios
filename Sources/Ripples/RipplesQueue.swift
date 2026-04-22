@@ -29,6 +29,9 @@ final class RipplesQueue {
 
     var depth: Int { fileQueue.depth }
 
+    /// Test-only: full snapshot of the file-backed queue.
+    func peekAll() -> [Data] { fileQueue.peek(Int.max) }
+
     init(config: RipplesConfig,
          api: RipplesApi,
          storage: RipplesStorage,

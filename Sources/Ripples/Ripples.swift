@@ -25,6 +25,13 @@ public final class Ripples {
     private var context: RipplesContext?
     private var reachability: RipplesReachability?
     private var visitorId: String?
+
+    /// Persisted user id from the most recent `identify()` call. Injected as
+    /// `$user_id` on every subsequent event so the backend doesn't have to
+    /// backfill identity after the fact.
+    private let userIdLock = NSLock()
+    private var userId: String?
+
     private let setupLock = NSLock()
     private var lifecycleObservers: [NSObjectProtocol] = []
 
@@ -58,9 +65,9 @@ public final class Ripples {
             let context = RipplesContext()
 
             // Restore or generate a persistent anonymous visitor ID.
-            let storedId = storage.readString(.distinctId)
+            let storedId = storage.readString(.visitorId)
             let vid = storedId ?? UUID().uuidString.lowercased()
-            if storedId == nil { storage.writeString(.distinctId, vid) }
+            if storedId == nil { storage.writeString(.visitorId, vid) }
 
             self.storage = storage
             self.api = api
@@ -68,6 +75,7 @@ public final class Ripples {
             self.context = context
             self.reachability = reachability
             self.visitorId = vid
+            self.userId = storage.readString(.userId)
 
             queue.start()
             registerLifecycleObservers()
@@ -87,6 +95,8 @@ public final class Ripples {
                 for (k, v) in traits { cachedTraits[k] = v }
             }
         }
+        userIdLock.withLock { self.userId = userId }
+        storage?.writeString(.userId, userId)
         enqueue("identify", merging: ["$user_id": userId], with: traits)
     }
 
@@ -191,6 +201,15 @@ public final class Ripples {
     /// Internal — visible for tests.
     var queueDepth: Int { queue?.depth ?? 0 }
 
+    /// Internal — visible for tests. Decoded properties of the most recently
+    /// enqueued event, or nil if the queue is empty.
+    var lastEnqueuedProperties: [String: Any]? {
+        guard let queue = self.queue else { return nil }
+        let all = queue.peekAll()
+        guard let data = all.last else { return nil }
+        return RipplesEvent.fromData(data)
+    }
+
     /// Internal — visible for tests.
     func reset() {
         setupLock.withLock {
@@ -209,6 +228,7 @@ public final class Ripples {
             config = nil
         }
         traitsLock.withLock { cachedTraits = [:] }
+        userIdLock.withLock { userId = nil }
     }
 
     // MARK: - Internals
@@ -229,6 +249,13 @@ public final class Ripples {
         // Inject persistent visitor ID.
         if props["$visitor_id"] == nil, let vid = visitorId {
             props["$visitor_id"] = vid
+        }
+
+        // Inject persistent user ID if the host app has identified the user.
+        if props["$user_id"] == nil {
+            if let uid = userIdLock.withLock({ userId }) {
+                props["$user_id"] = uid
+            }
         }
 
         // Inject session ID and device context.
