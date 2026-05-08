@@ -7,7 +7,8 @@ import UIKit
 ///
 /// Usage:
 ///
-///     Ripples.setup(RipplesConfig(apiKey: "priv_..."))
+///     // iOS is a client SDK — use the project token (UUID), never the `priv_` secret key.
+///     Ripples.setup(RipplesConfig(projectToken: "<your project token>"))
 ///     Ripples.shared.identify("user_123", traits: ["email": "jane@example.com"])
 ///     Ripples.shared.track("created a budget", userId: "user_123",
 ///                          properties: ["area": "budgets"])

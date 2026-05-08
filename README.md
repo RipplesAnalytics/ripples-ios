@@ -7,7 +7,7 @@ iOS / macOS / tvOS / watchOS client for [Ripples.sh](https://ripples.sh).
 Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/ripples-sh/ripples-ios", from: "0.1.6")
+.package(url: "https://github.com/ripplesanalytics/ripples-ios", from: "0.1.6")
 ```
 
 ## Keys
